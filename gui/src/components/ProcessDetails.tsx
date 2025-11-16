@@ -155,7 +155,7 @@ const RiskFactor = styled.div`
   }
 `;
 
-const ActionButton = styled.button`
+const ActionButton = styled.button<{ danger?: boolean }>`
   width: 100%;
   padding: 12px;
   margin-bottom: 10px;
@@ -171,15 +171,15 @@ const ActionButton = styled.button`
     background-color: ${props => props.theme.colors.border};
   }
 
-  &:danger {
-    border-color: ${props => props.theme.colors.graph.node.suspicious};
-    color: ${props => props.theme.colors.graph.node.suspicious};
+  ${props => props.danger && `
+    border-color: ${props.theme.colors.graph.node.suspicious};
+    color: ${props.theme.colors.graph.node.suspicious};
 
     &:hover {
-      background-color: ${props => props.theme.colors.graph.node.suspicious};
+      background-color: ${props.theme.colors.graph.node.suspicious};
       color: white;
     }
-  }
+  `}
 `;
 
 const ConnectionsList = styled.div`

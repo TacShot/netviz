@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, createContext } from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import NetworkGraph from './components/NetworkGraph';
 import ProcessDetails from './components/ProcessDetails';
-import { useWebSocket } from './hooks/useWebSocket';
+import useWebSocket from './hooks/useWebSocket';
 
 // Theme definition
 const lightTheme = {
