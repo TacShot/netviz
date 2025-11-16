@@ -257,6 +257,15 @@ declare -A PACKAGE_MAPPINGS=(
     ["elfutils_debian"]="elfutils-libelf-dev"
     ["elfutils_catchy"]="elfutils"
     ["elfutils_catchy_aur"]="elfutils"
+
+    # Kernel headers for eBPF compilation
+    ["kernel-headers_nixos"]="linuxHeaders"
+    ["kernel-headers_arch"]="linux-headers"
+    ["kernel-headers_arch_aur"]="linux-headers"
+    ["kernel-headers_ubuntu"]="linux-headers-generic"
+    ["kernel-headers_debian"]="linux-headers-amd64"
+    ["kernel-headers_catchy"]="linux-headers"
+    ["kernel-headers_catchy_aur"]="linux-headers"
 )
 
 # Get package name for distro and manager choice
@@ -565,7 +574,7 @@ install_packages() {
 
         # Add sudo password for non-yay commands
         if [[ "$PKG_MANAGER_CHOICE" != "yay" ]]; then
-            full_install_cmd="echo \"$PASSWORD\" | sudo -S $full_install_cmd"
+            full_install_cmd="echo \"$PASSWORD\" | sudo -S $install_cmd $package_name"
         fi
 
         if eval "$full_install_cmd"; then
@@ -1190,7 +1199,7 @@ install_missing_packages() {
     fi
 
     # Always add eBPF dependencies for full functionality
-    packages_to_install+=("bcc" "build-tools" "libbpf" "elfutils")
+    packages_to_install+=("bcc" "build-tools" "libbpf" "elfutils" "kernel-headers")
 
     if [ ${#packages_to_install[@]} -gt 0 ]; then
         echo "Packages to install: ${packages_to_install[*]}"
