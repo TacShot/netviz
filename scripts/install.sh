@@ -257,6 +257,15 @@ declare -A PACKAGE_MAPPINGS=(
     ["elfutils_debian"]="elfutils-libelf-dev"
     ["elfutils_catchy"]="elfutils"
     ["elfutils_catchy_aur"]="elfutils"
+
+    # Kernel headers for eBPF compilation
+    ["kernel-headers_nixos"]="linuxHeaders"
+    ["kernel-headers_arch"]="linux-headers"
+    ["kernel-headers_arch_aur"]="linux-headers"
+    ["kernel-headers_ubuntu"]="linux-headers-generic"
+    ["kernel-headers_debian"]="linux-headers-amd64"
+    ["kernel-headers_catchy"]="linux-headers"
+    ["kernel-headers_catchy_aur"]="linux-headers"
 )
 
 # Get package name for distro and manager choice
