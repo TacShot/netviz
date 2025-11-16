@@ -23,6 +23,7 @@ class ConnectionHandler:
         self.max_connections = max_connections
         self.retention_minutes = retention_minutes
         self.threat_detector = threat_detector
+        self.websocket_handler: Optional['WebSocketHandler'] = None
 
         # In-memory storage for connections (sliding window)
         self.connections: Dict[str, Dict[str, Any]] = {}
@@ -75,6 +76,11 @@ class ConnectionHandler:
                 if enriched_event['is_suspicious']:
                     logger.info(f"Suspicious connection detected: PID={event['pid']}, Dst={self.format_ip(event['daddr'])}:{event['dport']}")
 
+                # Broadcast the new connection event to all clients
+                if self.websocket_handler:
+                    logger.info(f"Broadcasting new connection: {enriched_event}")
+                    await self.websocket_handler.broadcast_connection(enriched_event)
+
         except Exception as e:
             logger.error(f"Error processing connection event: {e}")
 
@@ -99,15 +105,22 @@ class ConnectionHandler:
                 enriched['username'] = process.username()
                 enriched['create_time'] = process.create_time()
                 enriched['status'] = process.status()
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                # Use basic info from eBPF if psutil fails
-                enriched['process_name'] = event['comm']
-                enriched['cmdline_full'] = event['cmdline']
+            except psutil.NoSuchProcess:
+                enriched['process_name'] = f"[terminated_pid:{pid}]"
+                enriched['cmdline_full'] = event.get('cmdline', '')
                 enriched['exe_path'] = 'Unknown'
                 enriched['parent_pid'] = 0
                 enriched['username'] = 'Unknown'
                 enriched['create_time'] = 0
-                enriched['status'] = 'Unknown'
+                enriched['status'] = 'terminated'
+            except (psutil.AccessDenied, psutil.ZombieProcess):
+                enriched['process_name'] = event.get('comm', f'[pid:{pid}]')
+                enriched['cmdline_full'] = event.get('cmdline', '')
+                enriched['exe_path'] = 'Unknown'
+                enriched['parent_pid'] = 0
+                enriched['username'] = 'Restricted'
+                enriched['create_time'] = 0
+                enriched['status'] = 'restricted'
 
             # Add geographic info if available (placeholder for now)
             enriched['country_code'] = 'Unknown'
@@ -266,7 +279,12 @@ class ConnectionHandler:
                 'suspicious_percentage': (suspicious_count / len(self.connections)) * 100 if self.connections else 0,
                 'uptime_seconds': uptime,
                 'average_connections_per_second': self.total_connections / uptime if uptime > 0 else 0,
-                'top_processes': [{'pid': pid, **stats} for pid, stats in top_processes],
+                'top_processes': [
+                {
+                    'pid': pid,
+                    **{**stats, 'unique_destinations': list(stats.get('unique_destinations', []))}
+                } for pid, stats in top_processes
+            ],
                 'top_destinations': [{'ip': ip, 'count': count} for ip, count in top_destinations]
             }
 
@@ -299,3 +317,5 @@ class ConnectionHandler:
             return False
         except:
             return False
+
+

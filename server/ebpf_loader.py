@@ -35,8 +35,6 @@ class EBPFLoader:
 #include <linux/ptrace.h>
 #include <linux/tcp.h>
 #include <linux/inet.h>
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_tracing.h>
 
 #define MAX_COMM_LEN 16
 #define MAX_CMDLINE_LEN 256
@@ -103,29 +101,7 @@ int trace_tcp_connect(struct pt_regs *ctx) {
     return 0;
 }
 
-int trace_inet_sock_set_state(struct trace_event_raw_inet_sock_set_state *ctx) {
-    struct connection_event_t event = {};
-    u64 pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = pid_tgid >> 32;
 
-    if (ctx->protocol != IPPROTO_TCP || ctx->newstate != TCP_ESTABLISHED) {
-        return 0;
-    }
-
-    event.timestamp = bpf_ktime_get_ns();
-    event.pid = pid;
-    event.saddr = ctx->saddr;
-    event.daddr = ctx->daddr;
-    event.sport = ctx->sport;
-    event.dport = ctx->dport;
-    event.protocol = ctx->protocol;
-
-    bpf_get_current_comm(&event.comm, sizeof(event.comm));
-    __builtin_memcpy(event.cmdline, event.comm, MAX_COMM_LEN);
-
-    connections.perf_submit(ctx, &event, sizeof(event));
-    return 0;
-}
 """
 
     async def load_and_attach(self) -> bool:
@@ -141,22 +117,9 @@ int trace_inet_sock_set_state(struct trace_event_raw_inet_sock_set_state *ctx) {
             # Initialize BPF program
             self.bpf = BPF(text=self.c_program)
 
-            # Try to attach to tcp_connect kprobe first
-            try:
-                self.bpf.attach_kprobe(event="tcp_connect", fn_name="trace_tcp_connect")
-                logger.info("Attached to tcp_connect kprobe")
-            except Exception as e:
-                logger.warning(f"Failed to attach to tcp_connect kprobe: {e}")
-                # Try tracepoint instead
-                try:
-                    self.bpf.attach_tracepoint(
-                        tp="inet_sock_set_state",
-                        fn_name="trace_inet_sock_set_state"
-                    )
-                    logger.info("Attached to inet_sock_set_state tracepoint")
-                except Exception as e2:
-                    logger.error(f"Failed to attach to tracepoint: {e2}")
-                    raise
+            # Attach to the tcp_connect kprobe
+            self.bpf.attach_kprobe(event="tcp_connect", fn_name="trace_tcp_connect")
+            logger.info("Attached to tcp_connect kprobe")
 
             # Setup perf buffer for data reception
             self.bpf["connections"].open_perf_buffer(

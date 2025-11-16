@@ -2,10 +2,13 @@ const { app, BrowserWindow, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 
+console.log('App starting...');
+
 // Keep a global reference of the window object
 let mainWindow;
 
 function createWindow() {
+  console.log('Creating window...');
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -22,16 +25,18 @@ function createWindow() {
     titleBarStyle: 'default',
     show: false // Show window when ready to prevent visual flash
   });
+  console.log('Window created.');
 
-  // Load the app
-  mainWindow.loadURL(
-    isDev
+  const urlToLoad = isDev
       ? 'http://localhost:3000'
-      : `file://${path.join(__dirname, '../build/index.html')}`
-  );
+      : `file://${path.join(__dirname, '../build/index.html')}`;
+
+  console.log('Loading URL:', urlToLoad);
+  mainWindow.loadURL(urlToLoad);
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    console.log('Window ready to show.');
     mainWindow.show();
 
     // Open DevTools in development
@@ -42,6 +47,7 @@ function createWindow() {
 
   // Handle window closed
   mainWindow.on('closed', () => {
+    console.log('Window closed.');
     mainWindow = null;
   });
 
@@ -125,15 +131,20 @@ function createMenu() {
 }
 
 // App event handlers
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+    console.log('App is ready.');
+    createWindow();
+});
 
 app.on('window-all-closed', () => {
+  console.log('All windows closed, quitting app.');
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
 app.on('activate', () => {
+  console.log('App activated.');
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }

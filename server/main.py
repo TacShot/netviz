@@ -152,6 +152,7 @@ class NetworkMonitorServer:
             self.websocket_handler = WebSocketHandler(
                 connection_handler=self.connection_handler
             )
+            self.connection_handler.websocket_handler = self.websocket_handler
             logger.info("WebSocket handler initialized")
 
             # Initialize and load eBPF program
@@ -163,6 +164,10 @@ class NetworkMonitorServer:
             if not success:
                 logger.error("Failed to load eBPF program. Running without network monitoring.")
                 # Continue without eBPF for GUI testing
+
+            # Scan for existing connections at startup
+            # if self.connection_handler:
+            #     await self.connection_handler.scan_existing_connections()
 
             # Record start time
             self.start_time = asyncio.get_event_loop().time()

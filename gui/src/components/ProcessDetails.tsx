@@ -113,13 +113,13 @@ const InfoValue = styled.span`
   word-break: break-all;
 `;
 
-const RiskBadge = styled.span<{ level: string }>`
+const RiskBadge = styled.span<{ $level: string }>`
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
   background-color: ${props => {
-    switch (props.level) {
+    switch (props.$level) {
       case 'Critical': return 'rgba(188, 140, 255, 0.3)';
       case 'High': return 'rgba(248, 81, 73, 0.3)';
       case 'Medium': return 'rgba(248, 81, 73, 0.2)';
@@ -128,7 +128,7 @@ const RiskBadge = styled.span<{ level: string }>`
     }
   }};
   color: ${props => {
-    switch (props.level) {
+    switch (props.$level) {
       case 'Critical': return props.theme.colors.graph.node.critical;
       case 'High': return props.theme.colors.graph.node.suspicious;
       case 'Medium': return props.theme.colors.graph.node.warning;
@@ -155,7 +155,7 @@ const RiskFactor = styled.div`
   }
 `;
 
-const ActionButton = styled.button<{ danger?: boolean }>`
+const ActionButton = styled.button<{ $danger?: boolean }>`
   width: 100%;
   padding: 12px;
   margin-bottom: 10px;
@@ -171,7 +171,7 @@ const ActionButton = styled.button<{ danger?: boolean }>`
     background-color: ${props => props.theme.colors.border};
   }
 
-  ${props => props.danger && `
+  ${props => props.$danger && `
     border-color: ${props.theme.colors.graph.node.suspicious};
     color: ${props.theme.colors.graph.node.suspicious};
 
@@ -288,7 +288,7 @@ const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme
         <HeaderContent>
           <ProcessName>
             📁 {process.processName || 'Unknown Process'}
-            {process.isSuspicious && <RiskBadge level="High">🚨 Suspicious</RiskBadge>}
+            {process.isSuspicious && <RiskBadge $level="High">🚨 Suspicious</RiskBadge>}
           </ProcessName>
           <div style={{ fontSize: '12px', color: theme.colors.text.secondary }}>
             PID: {process.pid}
@@ -338,7 +338,7 @@ const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme
             <InfoRow>
               <InfoLabel>Risk Level</InfoLabel>
               <InfoValue>
-                <RiskBadge level={processAnalysis.risk_level}>
+                <RiskBadge $level={processAnalysis.risk_level}>
                   {processAnalysis.risk_level}
                 </RiskBadge>
               </InfoValue>
@@ -376,10 +376,25 @@ const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme
         {/* Actions */}
         <Section>
           <h3>Actions</h3>
-          <ActionButton>🔍 Search Process Online</ActionButton>
-          <ActionButton>📊 Export Process Details</ActionButton>
-          <ActionButton>🚫 Block Network Access</ActionButton>
-          <ActionButton danger>⚠️ Kill Process</ActionButton>
+          <ActionButton
+            onClick={() => {
+              window.open(`https://www.google.com/search?q=${process.processName || 'unknown process'}+process`, '_blank');
+            }}
+          >
+            🔍 Search Process Online
+          </ActionButton>
+          <ActionButton onClick={() => alert('Export functionality is not yet implemented.')}>
+            📊 Export Process Details
+          </ActionButton>
+          <ActionButton onClick={() => alert('Block functionality is not yet implemented.')}>
+            🚫 Block Network Access
+          </ActionButton>
+          <ActionButton
+            $danger
+            onClick={() => alert('Kill Process functionality is not yet implemented.')}
+          >
+            ⚠️ Kill Process
+          </ActionButton>
         </Section>
 
         {/* Recent Connections */}

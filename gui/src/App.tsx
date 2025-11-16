@@ -170,30 +170,30 @@ const Title = styled.h1`
   color: ${props => props.theme.colors.text.primary};
 `;
 
-const StatusIndicator = styled.div<{ status: 'online' | 'offline' | 'warning' }>`
+const StatusIndicator = styled.div<{ $status: 'online' | 'offline' | 'warning' }>`
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
   border-radius: 6px;
   background-color: ${props => {
-    switch (props.status) {
+    switch (props.$status) {
       case 'online': return 'rgba(63, 185, 80, 0.1)';
       case 'offline': return 'rgba(248, 81, 73, 0.1)';
       case 'warning': return 'rgba(210, 153, 34, 0.1)';
     }
   }};
-  color: ${props => props.theme.colors.status[props.status]};
+  color: ${props => props.theme.colors.status[props.$status]};
   font-size: 14px;
   font-weight: 500;
 `;
 
-const StatusDot = styled.div<{ status: 'online' | 'offline' | 'warning' }>`
+const StatusDot = styled.div<{ $status: 'online' | 'offline' | 'warning' }>`
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: ${props => props.theme.colors.status[props.status]};
-  animation: ${props => props.status === 'online' ? 'pulse 2s infinite' : 'none'};
+  background-color: ${props => props.theme.colors.status[props.$status]};
+  animation: ${props => props.$status === 'online' ? 'pulse 2s infinite' : 'none'};
 
   @keyframes pulse {
     0%, 100% {
@@ -217,8 +217,8 @@ const GraphContainer = styled.div`
   background-color: ${props => props.theme.colors.graph.background};
 `;
 
-const Sidebar = styled.aside<{ isOpen: boolean }>`
-  width: ${props => props.isOpen ? '400px' : '0'};
+const Sidebar = styled.aside<{ $isOpen: boolean }>`
+  width: ${props => props.$isOpen ? '400px' : '0'};
   background-color: ${props => props.theme.colors.surface};
   border-left: 1px solid ${props => props.theme.colors.border};
   transition: width 0.3s ease;
@@ -250,13 +250,13 @@ const StatItem = styled.div`
   gap: 5px;
 `;
 
-const ThreatBadge = styled.span<{ level: 'low' | 'medium' | 'high' | 'critical' }>`
+const ThreatBadge = styled.span<{ $level: 'low' | 'medium' | 'high' | 'critical' }>`
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
   background-color: ${props => {
-    switch (props.level) {
+    switch (props.$level) {
       case 'low': return 'rgba(88, 166, 255, 0.2)';
       case 'medium': return 'rgba(248, 81, 73, 0.2)';
       case 'high': return 'rgba(248, 81, 73, 0.3)';
@@ -264,7 +264,7 @@ const ThreatBadge = styled.span<{ level: 'low' | 'medium' | 'high' | 'critical' 
     }
   }};
   color: ${props => {
-    switch (props.level) {
+    switch (props.$level) {
       case 'low': return props.theme.colors.graph.node.safe;
       case 'medium': return props.theme.colors.graph.node.warning;
       case 'high': return props.theme.colors.graph.node.suspicious;
@@ -291,6 +291,7 @@ const ThemeToggle = styled.button`
 
 // Main App component
 const App: React.FC = () => {
+  console.log('App component rendered. window.electronAPI:', window.electronAPI);
   const [isDark, setIsDark] = useState(() => {
     // Check system preference and localStorage
     if (typeof window !== 'undefined') {
@@ -345,12 +346,12 @@ const App: React.FC = () => {
           <Header>
             <HeaderLeft>
               <Title>🌐 NetViz</Title>
-              <StatusIndicator status={getConnectionStatus()}>
-                <StatusDot status={getConnectionStatus()} />
+              <StatusIndicator $status={getConnectionStatus()}>
+                <StatusDot $status={getConnectionStatus()} />
                 {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
               </StatusIndicator>
               {threatCount > 0 && (
-                <ThreatBadge level={threatCount > 10 ? 'critical' : threatCount > 5 ? 'high' : threatCount > 1 ? 'medium' : 'low'}>
+                <ThreatBadge $level={threatCount > 10 ? 'critical' : threatCount > 5 ? 'high' : threatCount > 1 ? 'medium' : 'low'}>
                   {threatCount} Threat{threatCount !== 1 ? 's' : ''}
                 </ThreatBadge>
               )}
@@ -372,7 +373,7 @@ const App: React.FC = () => {
               />
             </GraphContainer>
 
-            <Sidebar isOpen={sidebarOpen}>
+            <Sidebar $isOpen={sidebarOpen}>
               {selectedProcess && (
                 <ProcessDetails
                   process={selectedProcess}

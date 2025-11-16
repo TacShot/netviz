@@ -123,7 +123,7 @@ class WebSocketHandler:
                 })
 
                 # Send heartbeat/ping
-                await self.send_ping(client_id, websocket)
+                # await self.send_ping(client_id, websocket)
 
             except Exception as e:
                 logger.error(f"Error sending periodic updates to client {client_id}: {e}")

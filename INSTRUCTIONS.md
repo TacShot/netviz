@@ -21,11 +21,16 @@ To set up your development environment and run NetViz in development mode, use t
     ```bash
     ./run_dev.sh
     ```
-    This will:
+    **Note on eBPF and Root Privileges:**
+    The eBPF network monitoring component requires root privileges.
+    -   If you run `./run_dev.sh` without `sudo`, the script will attempt to start the Python backend with `sudo` (you will be prompted for your password). If successful, eBPF monitoring will be enabled.
+    -   Alternatively, you can run the entire script with `sudo` (e.g., `sudo ./run_dev.sh`) to avoid a separate password prompt for the backend.
+
+    The script will:
     -   Create and activate a Python virtual environment in `server/venv`.
     -   Install Python dependencies from `server/requirements.txt`.
     -   Install Node.js dependencies in `gui/node_modules`.
-    -   Start the Python backend server.
+    -   Start the Python backend server (with root privileges if eBPF is enabled).
     -   Start the Electron GUI, which will connect to the backend.
 
     Press `Ctrl+C` in the terminal to stop both the backend and frontend processes.

@@ -107,8 +107,6 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
 
   // Graph state
   const simulationRef = useRef<d3.Simulation<GraphNode, GraphLink>>();
-  const nodesRef = useRef<GraphNode[]>([]);
-  const linksRef = useRef<GraphLink[]>([]);
 
   // Convert connections to graph data
   const processData = useCallback(() => {
@@ -195,21 +193,21 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
     return theme.colors.graph.edge.safe;
   }, [theme]);
 
-  // Initialize and update D3 visualization
+  // Initialize D3 visualization
   useEffect(() => {
     if (!svgRef.current || !containerRef.current) return;
 
     const svg = d3.select(svgRef.current);
     const container = d3.select(containerRef.current);
-
-    // Clear previous visualization
-    svg.selectAll('*').remove();
-
-    // Set up dimensions
     const width = container.node()!.clientWidth;
     const height = container.node()!.clientHeight;
 
     svg.attr('width', width).attr('height', height);
+
+    // Create main group for zoom/pan
+    const g = svg.append('g');
+    const linkGroup = g.append('g').attr('class', 'links');
+    const nodeGroup = g.append('g').attr('class', 'nodes');
 
     // Create zoom behavior
     const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -217,30 +215,26 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
       });
-
     svg.call(zoom);
 
-    // Create main group for zoom/pan
-    const g = svg.append('g');
-
-    // Process data
-    const { nodes, links } = processData();
-    nodesRef.current = nodes;
-    linksRef.current = links;
-
     // Create simulation
-    const simulation = d3.forceSimulation<GraphNode>(nodes)
-      .force('link', d3.forceLink<GraphNode, GraphLink>(links)
-        .id(d => d.id)
-        .distance(100)
-        .strength(0.5))
+    const simulation = d3.forceSimulation<GraphNode>()
+      .force('link', d3.forceLink<GraphNode, GraphLink>().id(d => d.id).distance(100).strength(0.5))
       .force('charge', d3.forceManyBody().strength(-300))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(30));
+      .force('collision', d3.forceCollide().radius(30))
+      .on('tick', () => {
+        nodeGroup.selectAll<SVGGElement, GraphNode>('g.node').attr('transform', d => `translate(${d.x},${d.y})`);
+        linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+          .attr('x1', d => (d.source as GraphNode).x!)
+          .attr('y1', d => (d.source as GraphNode).y!)
+          .attr('x2', d => (d.target as GraphNode).x!)
+          .attr('y2', d => (d.target as GraphNode).y!);
+      });
 
     simulationRef.current = simulation;
 
-    // Create arrow markers for directed edges
+    // Create arrow markers
     svg.append('defs').selectAll('marker')
       .data(['safe', 'warning', 'suspicious', 'critical'])
       .enter().append('marker')
@@ -262,15 +256,37 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
         }
       });
 
-    // Create links
-    const link = g.append('g')
-      .attr('class', 'links')
-      .selectAll('line')
-      .data(links)
-      .enter().append('line')
+    return () => {
+      simulation.stop();
+      svg.selectAll('*').remove();
+    };
+  }, [theme]); // Only run on theme change
+
+  // Update data in D3 visualization
+  useEffect(() => {
+    if (!simulationRef.current || !svgRef.current) return;
+
+    const simulation = simulationRef.current;
+    const svg = d3.select(svgRef.current);
+    const nodeGroup = svg.select<SVGGElement>('g.nodes');
+    const linkGroup = svg.select<SVGGElement>('g.links');
+
+    const { nodes: newNodes, links: newLinks } = processData();
+
+    // Update simulation data
+    simulation.nodes(newNodes);
+    simulation.force<d3.ForceLink<GraphNode, GraphLink>>('link')!.links(newLinks);
+
+    // --- LINKS ---
+    const link = linkGroup.selectAll<SVGLineElement, GraphLink>('line')
+      .data(newLinks, d => `${(d.source as GraphNode).id}-${(d.target as GraphNode).id}`);
+
+    link.exit().remove();
+
+    const linkEnter = link.enter().append('line')
+      .attr('stroke-opacity', 0)
       .attr('stroke', d => getLinkColor(d))
       .attr('stroke-width', d => Math.max(1, d.connection.threatScore / 25))
-      .attr('stroke-opacity', d => d.connection.isSuspicious ? 0.8 : 0.6)
       .attr('marker-end', d => {
         if (d.connection.threatScore >= 75) return 'url(#arrow-critical)';
         if (d.connection.threatScore >= 50) return 'url(#arrow-suspicious)';
@@ -278,69 +294,71 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
         return 'url(#arrow-safe)';
       });
 
-    // Create nodes
-    const node = g.append('g')
-      .attr('class', 'nodes')
-      .selectAll('g')
-      .data(nodes)
-      .enter().append('g')
+    link.merge(linkEnter)
+      .transition().duration(300)
+      .attr('stroke-opacity', d => d.connection.isSuspicious ? 0.8 : 0.6);
+
+    // --- NODES ---
+    const node = nodeGroup.selectAll<SVGGElement, GraphNode>('g.node')
+      .data(newNodes, d => d.id);
+
+    node.exit().remove();
+
+    const nodeEnter = node.enter().append('g')
       .attr('class', 'node')
       .style('cursor', 'pointer')
       .call(d3.drag<SVGGElement, GraphNode>()
         .on('start', dragstarted)
         .on('drag', dragged)
-        .on('end', dragended) as any);
+        .on('end', dragended) as any)
+      .on('mouseover', handleMouseOver)
+      .on('mouseout', handleMouseOut)
+      .on('click', handleClick);
 
-    // Add circles for nodes
-    node.append('circle')
-      .attr('r', d => {
-        const baseRadius = d.pid === -1 ? 8 : 12; // IP nodes are smaller
-        return baseRadius + Math.min(d.connectionCount * 2, 20);
-      })
+    nodeEnter.append('circle')
+      .attr('class', 'main-circle')
+      .attr('r', 0)
       .attr('fill', d => getNodeColor(d))
       .attr('stroke', '#fff')
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', d => selectedProcess?.id === d.id ? 1 : 0.3);
+      .attr('stroke-width', 2);
 
-    // Add glow effect for suspicious nodes
-    node.append('circle')
-      .attr('r', d => {
-        const baseRadius = d.pid === -1 ? 8 : 12;
-        return baseRadius + Math.min(d.connectionCount * 2, 20) + 5;
-      })
+    nodeEnter.append('circle')
+      .attr('class', 'pulse-circle')
+      .attr('r', 0)
       .attr('fill', 'none')
       .attr('stroke', d => getNodeColor(d))
       .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0)
-      .classed('pulse', d => d.isSuspicious);
+      .attr('stroke-opacity', 0);
 
-    // Add labels
-    node.append('text')
-      .text(d => d.pid === -1 ? d.processName : d.processName.length > 10 ? d.processName.substring(0, 10) + '...' : d.processName)
+    nodeEnter.append('text')
       .attr('x', 0)
       .attr('y', d => d.pid === -1 ? -15 : -20)
       .attr('text-anchor', 'middle')
       .attr('font-size', '11px')
       .attr('font-weight', '600')
       .attr('fill', theme.colors.text.secondary)
-      .style('pointer-events', 'none');
+      .style('pointer-events', 'none')
+      .style('opacity', 0);
 
-    // Add event handlers
-    node
-      .on('mouseover', handleMouseOver)
-      .on('mouseout', handleMouseOut)
-      .on('click', handleClick);
+    const nodeUpdate = node.merge(nodeEnter);
 
-    // Update positions on simulation tick
-    simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as GraphNode).x!)
-        .attr('y1', d => (d.source as GraphNode).y!)
-        .attr('x2', d => (d.target as GraphNode).x!)
-        .attr('y2', d => (d.target as GraphNode).y!);
+    nodeUpdate.select<SVGCircleElement>('circle.main-circle')
+      .transition().duration(300)
+      .attr('r', d => (d.pid === -1 ? 8 : 12) + Math.min(d.connectionCount * 2, 20))
+      .attr('fill', d => getNodeColor(d))
+      .attr('stroke-opacity', d => selectedProcess?.id === d.id ? 1 : 0.3);
 
-      node.attr('transform', d => `translate(${d.x},${d.y})`);
-    });
+    nodeUpdate.select<SVGCircleElement>('circle.pulse-circle')
+      .classed('pulse', d => d.isSuspicious)
+      .attr('r', d => (d.pid === -1 ? 8 : 12) + Math.min(d.connectionCount * 2, 20) + 5);
+
+    nodeUpdate.select<SVGTextElement>('text')
+      .text(d => {
+        const name = d.processName || '';
+        return d.pid === -1 ? name : name.length > 10 ? name.substring(0, 10) + '...' : name;
+      })
+      .transition().duration(300)
+      .style('opacity', 1);
 
     // Drag functions
     function dragstarted(event: d3.D3DragEvent<SVGGElement, GraphNode, GraphNode>, d: GraphNode) {
@@ -370,15 +388,7 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
         <div>Threat Score: ${d.threatScore}</div>
         <div>Status: ${d.isSuspicious ? '🚨 Suspicious' : '✅ Safe'}</div>
       `;
-
-      setTooltip({
-        visible: true,
-        x: event.pageX + 10,
-        y: event.pageY - 10,
-        content
-      });
-
-      // Highlight connected nodes
+      setTooltip({ visible: true, x: event.pageX + 10, y: event.pageY - 10, content });
       highlightConnections(d.id, true);
     }
 
@@ -388,22 +398,19 @@ const NetworkGraph: React.FC<NetworkGraphProps> = ({
     }
 
     function handleClick(event: MouseEvent, d: GraphNode) {
-      if (d.pid !== -1) { // Only process nodes are clickable
+      if (d.pid !== -1) {
         onNodeSelect(d);
       }
     }
 
     function highlightConnections(nodeId: string | null, highlight: boolean) {
-      link.style('opacity', l => {
+      linkGroup.selectAll<SVGLineElement, GraphLink>('line').style('opacity', l => {
         if (!highlight) return 0.6;
-        const link = l as GraphLink;
-        return (link.source as GraphNode).id === nodeId || (link.target as GraphNode).id === nodeId ? 1 : 0.2;
+        return (l.source as GraphNode).id === nodeId || (l.target as GraphNode).id === nodeId ? 1 : 0.2;
       });
     }
 
-    return () => {
-      simulation.stop();
-    };
+    simulation.alpha(0.3).restart();
 
   }, [connections, selectedProcess, processData, getNodeColor, getLinkColor, theme, onNodeSelect]);
 
