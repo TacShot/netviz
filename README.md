@@ -65,7 +65,7 @@ A real-time network connection monitoring system that uses eBPF to hook into `tc
 
 ```bash
 # Clone the repository
-git clone https://github.com/netviz/netviz.git
+git clone https://github.com/TacShot/netviz.git
 cd netviz
 
 # Run installation script (requires sudo for full functionality)
