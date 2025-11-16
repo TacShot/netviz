@@ -162,11 +162,14 @@ cp -r server "$DIST_DIR/"
 rm -rf "$DIST_DIR/server/venv"
 
 # Copy GUI build
-cp -r gui/build "$DIST_DIR/gui/"
-mkdir -p "$DIST_DIR/gui/public" # Create the public directory
-cp gui/public/electron.js "$DIST_DIR/gui/electron.js" # Copy electron.js to the root of gui dist
-cp gui/public/preload.js "$DIST_DIR/gui/public/"
-cp gui/package.json "$DIST_DIR/gui/"
+print_status "Copying GUI..."
+GUI_DIST_DIR="$DIST_DIR/gui"
+rm -rf "$GUI_DIST_DIR" # Clean first
+mkdir -p "$GUI_DIST_DIR/public"
+cp -r gui/build "$GUI_DIST_DIR/"
+cp gui/public/electron.js "$GUI_DIST_DIR/public/"
+cp gui/public/preload.js "$GUI_DIST_DIR/public/"
+cp gui/package.json "$GUI_DIST_DIR/"
 
 # Copy scripts
 cp scripts/* "$DIST_DIR/"
