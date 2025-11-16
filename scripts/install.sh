@@ -574,7 +574,7 @@ install_packages() {
 
         # Add sudo password for non-yay commands
         if [[ "$PKG_MANAGER_CHOICE" != "yay" ]]; then
-            full_install_cmd="echo \"$PASSWORD\" | sudo -S $full_install_cmd"
+            full_install_cmd="echo \"$PASSWORD\" | sudo -S $install_cmd $package_name"
         fi
 
         if eval "$full_install_cmd"; then
