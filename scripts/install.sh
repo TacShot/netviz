@@ -1199,7 +1199,7 @@ install_missing_packages() {
     fi
 
     # Always add eBPF dependencies for full functionality
-    packages_to_install+=("bcc" "build-tools" "libbpf" "elfutils")
+    packages_to_install+=("bcc" "build-tools" "libbpf" "elfutils" "kernel-headers")
 
     if [ ${#packages_to_install[@]} -gt 0 ]; then
         echo "Packages to install: ${packages_to_install[*]}"
