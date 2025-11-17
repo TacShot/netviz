@@ -3,7 +3,6 @@
 A real-time network connection monitoring system that uses eBPF to hook into `tcp_connect` syscalls, analyzes traffic for suspicious patterns, and visualizes network activity in an interactive desktop application.
 
 ![NetViz Logo](https://img.shields.io/badge/eBPF-Network%20Monitoring-red)
-![License](https://img.shields.io/badge/License-MIT-blue)
 ![Platform](https://img.shields.io/badge/Platform-Linux-orange)
 
 ## 🚀 Features
