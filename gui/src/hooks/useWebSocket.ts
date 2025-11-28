@@ -64,18 +64,39 @@ const useWebSocket = (url: string): UseWebSocketReturn => {
 
   // --- Function Declarations ---
 
+  const transformConnection = (data: any): Connection => ({
+    id: data.id,
+    timestamp: data.timestamp,
+    pid: data.pid,
+    processName: data.process_name,
+    cmdlineFull: data.cmdline_full,
+    srcIp: data.src_ip,
+    dstIp: data.dst_ip,
+    srcPort: data.sport,
+    dstPort: data.dport,
+    protocolStr: data.protocol_str,
+    threatScore: data.threat_score,
+    isSuspicious: data.is_suspicious,
+    username: data.username,
+    exePath: data.exe_path,
+    isPrivate: data.is_private,
+    isSafePort: data.is_safe_port,
+  });
+
   // These handlers are simple state setters, so they can be defined first.
-  const handleNewConnection = useCallback((connectionData: Connection) => {
-    setConnections(prev => [connectionData, ...prev].slice(0, 1000));
-    if (connectionData.isSuspicious) {
+  const handleNewConnection = useCallback((connectionData: any) => {
+    const transformedData = transformConnection(connectionData);
+    setConnections(prev => [transformedData, ...prev].slice(0, 1000));
+    if (transformedData.isSuspicious) {
       setThreatCount(prev => prev + 1);
     }
   }, []);
 
   const handleInitialData = useCallback((data: any) => {
     if (data.connections) {
-      setConnections(data.connections.slice(0, 1000));
-      setThreatCount(data.connections.filter((c: Connection) => c.isSuspicious).length);
+      const transformedConnections = data.connections.map(transformConnection);
+      setConnections(transformedConnections.slice(0, 1000));
+      setThreatCount(transformedConnections.filter((c: Connection) => c.isSuspicious).length);
     }
     if (data.server_info) {
       console.log('Server info:', data.server_info);
@@ -84,8 +105,9 @@ const useWebSocket = (url: string): UseWebSocketReturn => {
 
   const handleConnectionsData = useCallback((data: any) => {
     if (data.connections) {
-      setConnections(data.connections.slice(0, 1000));
-      setThreatCount(data.connections.filter((c: Connection) => c.isSuspicious).length);
+      const transformedConnections = data.connections.map(transformConnection);
+      setConnections(transformedConnections.slice(0, 1000));
+      setThreatCount(transformedConnections.filter((c: Connection) => c.isSuspicious).length);
     }
   }, []);
 
