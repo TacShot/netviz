@@ -6,6 +6,7 @@ interface ProcessDetailsProps {
   process: any;
   onClose: () => void;
   theme: any;
+  sendMessage: (message: any) => void;
 }
 
 interface ProcessAnalysis {
@@ -218,7 +219,7 @@ const ConnectionDetails = styled.div`
   line-height: 1.4;
 `;
 
-const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme }) => {
+const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme, sendMessage }) => {
   const [processAnalysis, setProcessAnalysis] = useState<ProcessAnalysis | null>(null);
   const [recentConnections, setRecentConnections] = useState<any[]>([]);
 
@@ -391,7 +392,11 @@ const ProcessDetails: React.FC<ProcessDetailsProps> = ({ process, onClose, theme
           </ActionButton>
           <ActionButton
             $danger
-            onClick={() => alert('Kill Process functionality is not yet implemented.')}
+            onClick={() => {
+              if (window.confirm(`Are you sure you want to kill process ${process.pid}?`)) {
+                sendMessage({ type: 'kill_process', data: { pid: process.pid } });
+              }
+            }}
           >
             ⚠️ Kill Process
           </ActionButton>

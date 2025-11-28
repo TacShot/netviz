@@ -11,6 +11,7 @@ import uuid
 from typing import Dict, List, Any, Set
 from datetime import datetime
 
+import psutil
 import websockets
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -164,6 +165,8 @@ class WebSocketHandler:
             await self.handle_get_process_details(client_id, websocket, data)
         elif message_type == 'get_connections':
             await self.handle_get_connections(client_id, websocket, data)
+        elif message_type == 'kill_process':
+            await self.handle_kill_process(client_id, websocket, data)
         else:
             logger.warning(f"Unknown message type from client {client_id}: {message_type}")
             await self.send_error(client_id, websocket, f"Unknown message type: {message_type}")
@@ -236,6 +239,61 @@ class WebSocketHandler:
         except Exception as e:
             logger.error(f"Error getting connections: {e}")
             await self.send_error(client_id, websocket, "Error getting connections")
+
+    async def handle_kill_process(self, client_id: str, websocket: WebSocket, data: Dict[str, Any]):
+        """Handle request to kill a process"""
+        pid = data.get('data', {}).get('pid')
+        if not pid:
+            await self.send_error(client_id, websocket, "PID not provided for kill_process")
+            return
+
+        try:
+            pid = int(pid)
+            proc = psutil.Process(pid)
+            
+            # Terminate child processes first to avoid orphans
+            children = proc.children(recursive=True)
+            for child in children:
+                try:
+                    child.terminate()
+                except psutil.NoSuchProcess:
+                    continue # Child might have already been terminated
+
+            # Wait for children to terminate
+            gone, alive = psutil.wait_procs(children, timeout=3)
+            for p in alive:
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    continue
+
+            # Terminate the parent process
+            proc.terminate()
+            try:
+                proc.wait(timeout=3)
+            except psutil.TimeoutExpired:
+                proc.kill()
+
+
+            logger.info(f"Process {pid} killed by client {client_id}")
+            await self.send_message(client_id, websocket, {
+                'type': 'process_killed',
+                'data': {'pid': pid, 'status': 'success'}
+            })
+
+        except psutil.NoSuchProcess:
+            logger.warning(f"Attempted to kill non-existent process {pid}")
+            await self.send_error(client_id, websocket, f"Process with PID {pid} not found.")
+        
+        except psutil.AccessDenied:
+            logger.error(f"Access denied when trying to kill process {pid}")
+            await self.send_error(client_id, websocket, f"Access denied. Insufficient permissions to kill process {pid}.")
+
+        except Exception as e:
+            logger.error(f"Error killing process {pid}: {e}")
+            await self.send_error(client_id, websocket, f"An unexpected error occurred while trying to kill process {pid}.")
+
+
 
     def apply_filters(self, connections: List[Dict[str, Any]], filters: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Apply filters to connection list"""

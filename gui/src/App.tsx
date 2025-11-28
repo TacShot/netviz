@@ -313,7 +313,8 @@ const App: React.FC = () => {
     connections,
     statistics,
     threatCount,
-    connectionStatus
+    connectionStatus,
+    sendMessage
   } = useWebSocket('ws://localhost:8080/ws/realtime');
 
   // Theme management
@@ -379,6 +380,7 @@ const App: React.FC = () => {
                   process={selectedProcess}
                   onClose={() => setSidebarOpen(false)}
                   theme={theme}
+                  sendMessage={sendMessage}
                 />
               )}
             </Sidebar>
